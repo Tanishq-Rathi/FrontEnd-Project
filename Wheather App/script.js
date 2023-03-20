@@ -6,6 +6,11 @@ const searchForm = document.querySelector("[data-searchForm]");
 const loadingScreen= document.querySelector(".loading-container");
 const userInfoContainer= document.querySelector(".user-info-container");
 
+const apiErrorMessage=document.querySelector("[data-apiErrorText]")
+const apiErrorContainer=document.querySelector(".api-error-container");
+ const apiErrorImg = document.querySelector("[data-notFoundImg]");
+ const apiErrorBtn= document.querySelector("[data-apiErrorBtn]")
+
 const API_KEY="4723b59c994da4b71e8d04cadf3160b0";
 let currentTab = userTab;
 currentTab.classList.add("current-tab");
@@ -26,7 +31,7 @@ function switchTab(ClickedTab) {
         }
         else{
             searchForm.classList.remove("active");
-            userInfoContainer.remove("active");
+            userInfoContainer.classList.remove("active");
             getfromSessionStorage();
         }
     }
@@ -52,9 +57,27 @@ function getfromSessionStorage(){
         fetchUserWeatherInfo(coordinates);
     }
 }
+// Handle any errors
+function showError(error) {
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        messageText.innerText = "You denied the request for Geolocation.";
+        break;
+      case error.POSITION_UNAVAILABLE:
+        messageText.innerText = "Location information is unavailable.";
+        break;
+      case error.TIMEOUT:
+        messageText.innerText = "The request to get user location timed out.";
+        break;
+      case error.UNKNOWN_ERROR:
+        messageText.innerText = "An unknown error occurred.";
+        break;
+    }
+  }
 async function fetchUserWeatherInfo(coordinates){
     const {lat,lon} = coordinates;
     //make grantcontainer invisible
+    grantAccessContainer.classList.remove("active");
     //make loder visible
     loadingScreen.classList.add("active");
     // API CALL
@@ -67,6 +90,10 @@ async function fetchUserWeatherInfo(coordinates){
         renderWeatherInfo(data);
     } catch (error) {
         loadingScreen.classList.remove("active");
+        apiErrorContainer.classList.add("active");
+        apiErrorMessage.innerText = `Error: ${error?.message}`;
+        apiErrorBtn.addEventListener("click", fetchUserWeatherInfo);
+ 
     }
 }
 function renderWeatherInfo(weatherInfo){
@@ -80,7 +107,7 @@ function renderWeatherInfo(weatherInfo){
     const windspeed = document.querySelector("[data-windspeed]");
     const humidity = document.querySelector("[data-humidity]");
     const cloudiness = document.querySelector("[data-cloudiness]");
-    console.log(weatherInfo)
+    // console.log(weatherInfo)
 
     // fetch value from weatherInfo object and put it UI elements
     cityName.innerText = weatherInfo?.name;
@@ -99,6 +126,7 @@ function getLocation(){
     }
     else{
         //Show elert for no geoLocation suppport avaliable
+         
     }
 }
 function showPosition(position){
@@ -111,7 +139,6 @@ function showPosition(position){
     fetchUserWeatherInfo(userCoordinates);
 }
 
-
 const grantAccessButton = document.querySelector("[data-grantAccess]");
 grantAccessButton.addEventListener("click",getLocation);
 
@@ -122,25 +149,34 @@ searchForm.addEventListener("submit",(e)=>{
     let cityName=searchInput.value;
     if (cityName==="") return;
 
-    fetchSearchWeatherInfo( cityName);
+    fetchSearchWeatherInfo(cityName);
 
 });
 
 async function fetchSearchWeatherInfo(city){
 loadingScreen.classList.add("active");
-userInfoContainer.classList.remove("active");
 grantAccessContainer.classList.remove("active");
+userInfoContainer.classList.remove("active");
+apiErrorContainer.classList.remove("active");
 
 try {
     const response= await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
     );
     const data = await response.json();
+    if (!data.sys) {
+        throw data;
+      }
     loadingScreen.classList.remove("active");
     userInfoContainer.classList.add("active");
     renderWeatherInfo(data);
 } catch (error) {
+    loadingScreen.classList.remove("active");
+    apiErrorContainer.classList.add("active");
+    apiErrorMessage.innerText = `${error?.message}`;
+    apiErrorBtn.style.display = "none";
     
 }
 
 }
+
